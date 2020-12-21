@@ -221,7 +221,7 @@ if __name__ == "__main__":
         "--arch",
         help=
         "Architecture to download binary for (default is {})".format(default_arch),
-        choices=["aarch64", "armv7", "i386", "x86_64"],
+        choices=["aarch64", "armv7l", "i386", "x86_64"],
         default=default_arch,
     )
     parser.add_argument("--bindir",
