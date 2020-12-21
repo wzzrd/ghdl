@@ -194,6 +194,9 @@ def get_binary(urls, bindir, linkdir):
 
 if __name__ == "__main__":
 
+    default_arch = platform.machine().lower()
+    default_os   = platform.system().lower()
+
     parser = argparse.ArgumentParser(
         description="Download latest released binary from a project on GitHub."
     )
@@ -210,15 +213,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--os",
         help="Operating system to download binary for (default is {})".format(
-            platform.system().lower()),
+            default_os),
         choices=["darwin", "linux", "windows"],
-        default=platform.system().lower(),
+        default=default_os,
     )
     parser.add_argument(
         "--arch",
         help=
-        "Architecture to download binary for (default is current platform)",
+        "Architecture to download binary for (default is {})".format(default_arch),
         choices=["aarch64", "armv7", "i386", "x86_64"],
+        default=default_arch,
     )
     parser.add_argument("--bindir",
                         help="Directory to install binary into",
@@ -231,10 +235,10 @@ if __name__ == "__main__":
     # The else case below should never happen, because
     # platform.system().lower() should always return either linux, windows or
     # darwin...
-    myos = platform.system().lower() if not args["os"] else "linux"
+    myos = args["os"]
     # The else case below should never happen, because
     # platform.machine().lower() should always return something like x86_64 or aarch64
-    myarch = platform.machine().lower() if not args["arch"] else "x86_64"
+    myarch = args["arch"]
     bindir = args["bindir"]
     linkdir = args["linkdir"]
     token = args["token"]
