@@ -15,23 +15,26 @@ import platform
 
 from zipfile import ZipFile
 
+
 def get_api_data(org, project):
     """
     Get information on the latest version of a project on GitHub through the API
     """
 
-    url = "https://api.github.com/repos/{}/{}/releases/latest".format(org, project)
+    url = "https://api.github.com/repos/{}/{}/releases/latest".format(
+        org, project)
     print("URL: ", url)
 
-    credentials = ('%s:%s' % (username, token))
-    encoded_credentials = base64.b64encode(credentials.encode('ascii'))
+    credentials = "%s:%s" % (username, token)
+    encoded_credentials = base64.b64encode(credentials.encode("ascii"))
 
     try:
         req = urllib.request.Request(url)
-        req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode('ascii'))
+        req.add_header("Authorization",
+                       "Basic %s" % encoded_credentials.decode("ascii"))
         response = urllib.request.urlopen(req)
     except:
-        print('Cannot open {}'.format(url))
+        print("Cannot open {}".format(url))
         sys.exit(1)
 
     response_data = response.read()
@@ -46,8 +49,8 @@ def get_latest_list(data):
     """
 
     links = []
-    for asset in data['assets']:
-        links.append(asset['browser_download_url'])
+    for asset in data["assets"]:
+        links.append(asset["browser_download_url"])
 
     return links
 
@@ -62,19 +65,19 @@ def filter_urls(urls, myArch, myOS):
         if myOS in url.lower():
             new_urls.append(url)
 
-    #? are these regexps exhaustive enough? 
-    #? I'm not even sure arm(v)8 is actually used in releases :)
+    # ? are these regexps exhaustive enough?
+    # ? I'm not even sure arm(v)8 is actually used in releases :)
     if myArch == "x86_64":
-        arch_r = re.compile('.*64bit.*|.*x86_64.*|.*amd64.*')
+        arch_r = re.compile(".*64bit.*|.*x86_64.*|.*amd64.*")
     elif myArch == "aarch64":
-        arch_r = re.compile('.*aarch64.*|.*arm64.*|.*arm8.*|.*armv8.*')
+        arch_r = re.compile(".*aarch64.*|.*arm64.*|.*arm8.*|.*armv8.*")
     elif myArch == "armv7":
         # Assumption is that plain 'arm' refers to armv7
-        arch_r = re.compile('.*armv7.*|.*arm7.*|.*arm')
+        arch_r = re.compile(".*armv7.*|.*arm7.*|.*arm")
     elif myArch == "i386":
-        arch_r = re.compile('.*386.*')
+        arch_r = re.compile(".*386.*")
 
-    urls = [ x for x in new_urls if arch_r.match(x, re.IGNORECASE) ]
+    urls = [x for x in new_urls if arch_r.match(x, re.IGNORECASE)]
 
     # If the list of URLs is empty after filtering for the architecture, but
     # was not empty after filtering for the OS, opportunistically return the
@@ -93,17 +96,18 @@ def filter_extensions(urls, myOS):
     """
 
     # Filter useless extensions, like for checksums, text files, debs, rpms...
-    ext_r = re.compile('.*asc|.*sha512.*|.*md5.*|.*sha1.*|.*sha2*|.*txt|.*deb|.*rpm')
-    urls = [ x for x in urls if not ext_r.match(x, re.IGNORECASE) ]
+    ext_r = re.compile(
+        ".*asc|.*sha512.*|.*md5.*|.*sha1.*|.*sha2*|.*txt|.*deb|.*rpm")
+    urls = [x for x in urls if not ext_r.match(x, re.IGNORECASE)]
 
     if myOS == "linux" or myOS == "darwin":
-        #? what if a project releases both a tar.gz and a tar.xz?
-        #? what if a project releases a non-zipped tarball?
-        ext_r = re.compile('.*tar.gz|.*tar.xz|.*tar.bz|.*tar.bz2')
+        # ? what if a project releases both a tar.gz and a tar.xz?
+        # ? what if a project releases a non-zipped tarball?
+        ext_r = re.compile(".*tar.gz|.*tar.xz|.*tar.bz|.*tar.bz2")
     elif myOS == "windows":
-        ext_r = re.compile('.*zip')
+        ext_r = re.compile(".*zip")
 
-    new_urls = [ x for x in urls if ext_r.match(x, re.IGNORECASE) ]
+    new_urls = [x for x in urls if ext_r.match(x, re.IGNORECASE)]
 
     if len(new_urls) == 0 and len(urls) > 0:
         return urls
@@ -116,7 +120,7 @@ def get_latest_version(data):
     Get the version of the latest release, based on list of URLs
     """
 
-    return data['tag_name']
+    return data["tag_name"]
 
 
 def get_binary(urls, bindir, linkdir):
@@ -134,85 +138,107 @@ def get_binary(urls, bindir, linkdir):
     # we use a tmpdir so we can easily remove the whole download later
     tmpdir = tempfile.mkdtemp()
     name = os.path.basename(url)
-    targetfile = tmpdir + '/' + name
+    targetfile = tmpdir + "/" + name
     urllib.request.urlretrieve(url, targetfile)
-    print("Downloaded file: " + tmpdir + '/' + name)
+    print("Downloaded file: " + tmpdir + "/" + name)
     os.chdir(tmpdir)
-    
+
     extracted = False
-    if 'tar' in name:
+    if "tar" in name:
         mytar = tarfile.open(targetfile)
         mytar.extractall()
         os.remove(targetfile)
         extracted = True
-    elif 'zip' in name:
-        with ZipFile(targetfile, 'r') as myzip:                                            
+    elif "zip" in name:
+        with ZipFile(targetfile, "r") as myzip:
             myzip.extractall()
         os.remove(targetfile)
         extracted = True
     else:
-        print('name was {}, no tar or zip?'.format(name))
+        print("name was {}, no tar or zip?".format(name))
 
     if extracted:
         # Find largest file in extracted directory
-        largest = sorted((os.path.getsize(s), s)
-            for s in glob.glob(tmpdir + '/**', recursive=True))[-1][1]
-        print('Largest file: {}'.format(largest))
+        largest = sorted(
+            (os.path.getsize(s), s)
+            for s in glob.glob(tmpdir + "/**", recursive=True))[-1][1]
+        print("Largest file: {}".format(largest))
 
-        finalfile = os.path.basename(largest).replace('_', '-').split('-')[0]
-        finalpath = bindir + '/' + finalfile + '-' + latest_version
+        finalfile = os.path.basename(largest).replace("_", "-").split("-")[0]
+        finalpath = bindir + "/" + finalfile + "-" + latest_version
         shutil.move(largest, finalpath)
     else:
-        finalfile = os.path.basename(targetfile).replace('_', '-').split('-')[0]
-        finalpath = bindir + '/' + finalfile + '-' + latest_version
+        finalfile = os.path.basename(targetfile).replace("_",
+                                                         "-").split("-")[0]
+        finalpath = bindir + "/" + finalfile + "-" + latest_version
         shutil.move(targetfile, finalpath)
 
-    finallink = linkdir + '/' + finalfile
+    finallink = linkdir + "/" + finalfile
     os.chmod(finalpath, 0o755)
     print("Cleaning up temporary directory")
     shutil.rmtree(tmpdir)
 
     try:
         os.symlink(finalpath, finallink)
-        print('Symlinked {} to {}'.format(finalpath, finallink))
+        print("Symlinked {} to {}".format(finalpath, finallink))
     except FileExistsError:
-        print('Symlink exists. Removing and recreating it.')
+        print("Symlink exists. Removing and recreating it.")
         os.remove(finallink)
         os.symlink(finalpath, finallink)
-        print('Symlinked {} to {}'.format(finalpath, finallink))
+        print("Symlinked {} to {}".format(finalpath, finallink))
         os.symlink(finalpath, finallink)
-        print('Symlinked {} to {}'.format(finalpath, finallink))
-    
+        print("Symlinked {} to {}".format(finalpath, finallink))
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Download latest released binary from a project on GitHub.')
-    parser.add_argument('--token', help='GitHub API token', required=True)
-    parser.add_argument('--username', help='GitHub username token', required=True)
-    parser.add_argument('--org', help='GitHub organization project belongs to', required=True)
-    parser.add_argument('--project', help='GitHub project to download latest binary from', required=True)
-    parser.add_argument('--os', help='Operating system to download binary for
-    (default is {})'.format(platform.system().lower()), choices=['darwin',
-    'linux', 'windows'], default=platform.system().lower())
-    parser.add_argument('--arch', help='Architecture to download binary for (default is current platform)', choices=['aarch64', 'armv7', 'i386', 'x86_64'])
-    parser.add_argument('--bindir', help='Directory to install binary into', required=True)
-    parser.add_argument('--linkdir', help='Directory to install symlink into', required=True)
+    parser = argparse.ArgumentParser(
+        description="Download latest released binary from a project on GitHub."
+    )
+    parser.add_argument("--token", help="GitHub API token", required=True)
+    parser.add_argument("--username",
+                        help="GitHub username token",
+                        required=True)
+    parser.add_argument("--org",
+                        help="GitHub organization project belongs to",
+                        required=True)
+    parser.add_argument("--project",
+                        help="GitHub project to download latest binary from",
+                        required=True)
+    parser.add_argument(
+        "--os",
+        help="Operating system to download binary for (default is {})".format(
+            platform.system().lower()),
+        choices=["darwin", "linux", "windows"],
+        default=platform.system().lower(),
+    )
+    parser.add_argument(
+        "--arch",
+        help=
+        "Architecture to download binary for (default is current platform)",
+        choices=["aarch64", "armv7", "i386", "x86_64"],
+    )
+    parser.add_argument("--bindir",
+                        help="Directory to install binary into",
+                        required=True)
+    parser.add_argument("--linkdir",
+                        help="Directory to install symlink into",
+                        required=True)
     args = vars(parser.parse_args())
 
     # The else case below should never happen, because
     # platform.system().lower() should always return either linux, windows or
     # darwin...
-    myos =  platform.system().lower() if not args['os'] else 'linux'
+    myos = platform.system().lower() if not args["os"] else "linux"
     # The else case below should never happen, because
     # platform.machine().lower() should always return something like x86_64 or aarch64
-    myarch = platform.machine().lower() if not args['arch'] else 'x86_64'
-    bindir = args['bindir']
-    linkdir = args['linkdir']
-    token = args['token']
-    username = args['username']
+    myarch = platform.machine().lower() if not args["arch"] else "x86_64"
+    bindir = args["bindir"]
+    linkdir = args["linkdir"]
+    token = args["token"]
+    username = args["username"]
 
-    data = get_api_data(args['org'], args['project'])
+    data = get_api_data(args["org"], args["project"])
     urls = get_latest_list(data)
     latest_version = get_latest_version(data)
     print("Latest version found: ", latest_version)
