@@ -11,6 +11,7 @@ import tempfile
 import tarfile
 import shutil
 import argparse
+import platform
 
 from zipfile import ZipFile
 
@@ -191,14 +192,21 @@ if __name__ == "__main__":
     parser.add_argument('--username', help='GitHub username token', required=True)
     parser.add_argument('--org', help='GitHub organization project belongs to', required=True)
     parser.add_argument('--project', help='GitHub project to download latest binary from', required=True)
-    parser.add_argument('--os', help='Operating system to download binary for (default is linux)', choices=['darwin', 'linux', 'windows'], default='linux')
-    parser.add_argument('--arch', help='Architecture to download binary for (default is x86_64)', choices=['aarch64', 'armv7', 'i386', 'x86_64'], default='x86_64')
+    parser.add_argument('--os', help='Operating system to download binary for
+    (default is {})'.format(platform.system().lower()), choices=['darwin',
+    'linux', 'windows'], default=platform.system().lower())
+    parser.add_argument('--arch', help='Architecture to download binary for (default is current platform)', choices=['aarch64', 'armv7', 'i386', 'x86_64'])
     parser.add_argument('--bindir', help='Directory to install binary into', required=True)
     parser.add_argument('--linkdir', help='Directory to install symlink into', required=True)
     args = vars(parser.parse_args())
 
-    myos = args['os']
-    myarch = args['arch']
+    # The else case below should never happen, because
+    # platform.system().lower() should always return either linux, windows or
+    # darwin...
+    myos =  platform.system().lower() if not args['os'] else 'linux'
+    # The else case below should never happen, because
+    # platform.machine().lower() should always return something like x86_64 or aarch64
+    myarch = platform.machine().lower() if not args['arch'] else 'x86_64'
     bindir = args['bindir']
     linkdir = args['linkdir']
     token = args['token']
