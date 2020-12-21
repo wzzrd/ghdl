@@ -67,12 +67,14 @@ def filter_urls(urls, myArch, myOS):
 
     # ? are these regexps exhaustive enough?
     # ? I'm not even sure arm(v)8 is actually used in releases :)
+    # * Checked on couple of rpis; it's aarch64, armv7l and armv6l
+    # * I don't think I want to support armv6l, but armv7l seems reasonable to support
     if myArch == "x86_64":
         arch_r = re.compile(".*64bit.*|.*x86_64.*|.*amd64.*")
     elif myArch == "aarch64":
         arch_r = re.compile(".*aarch64.*|.*arm64.*|.*arm8.*|.*armv8.*")
-    elif myArch == "armv7":
-        # Assumption is that plain 'arm' refers to armv7
+    elif myArch == "armv7l":
+        # Assumption is that plain 'arm' refers to armv7l
         arch_r = re.compile(".*armv7.*|.*arm7.*|.*arm")
     elif myArch == "i386":
         arch_r = re.compile(".*386.*")
