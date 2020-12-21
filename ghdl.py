@@ -15,7 +15,9 @@ import argparse
 from zipfile import ZipFile
 
 def get_api_data(org, project):
-    """Get latest version of a project on GitHub"""
+    """
+    Get information on the latest version of a project on GitHub through the API
+    """
 
     url = "https://api.github.com/repos/{}/{}/releases/latest".format(org, project)
     print("URL: ", url)
@@ -28,7 +30,7 @@ def get_api_data(org, project):
         req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode('ascii'))
         response = urllib.request.urlopen(req)
     except:
-        print('Cannot open ', download_url)
+        print('Cannot open {}'.format(url))
         sys.exit(1)
 
     response_data = response.read()
@@ -38,7 +40,9 @@ def get_api_data(org, project):
 
 
 def get_latest_list(data):
-    """Get list of download URLs from blob of API data"""
+    """
+    Get list of download URLs from blob of API data
+    """
 
     links = []
     for asset in data['assets']:
@@ -49,7 +53,7 @@ def get_latest_list(data):
 
 def filter_urls(urls, myArch, myOS):
     """
-    Filters list of URLs to only those for the right OS and architecture
+    Filters list of URLs to only include those for the requested OS and architecture
     """
     new_urls = []
 
@@ -57,6 +61,8 @@ def filter_urls(urls, myArch, myOS):
         if myOS in url.lower():
             new_urls.append(url)
 
+    #? are these regexps exhaustive enough? 
+    #? I'm not even sure arm(v)8 is actually used in releases :)
     if myArch == "x86_64":
         arch_r = re.compile('.*64bit.*|.*x86_64.*|.*amd64.*')
     elif myArch == "aarch64":
@@ -69,6 +75,9 @@ def filter_urls(urls, myArch, myOS):
 
     urls = [ x for x in new_urls if arch_r.match(x, re.IGNORECASE) ]
 
+    # If the list of URLs is empty after filtering for the architecture, but
+    # was not empty after filtering for the OS, opportunistically return the
+    # list of URLs filtered for the OS only.
     if len(urls) == 0 and len(new_urls) > 0:
         return new_urls
     else:
@@ -82,11 +91,13 @@ def filter_extensions(urls, myOS):
     If list ends up empty, returns the original list.
     """
 
-    # Filter useless extensions, like for checksums, text files, debs, rpms, etc.
+    # Filter useless extensions, like for checksums, text files, debs, rpms...
     ext_r = re.compile('.*asc|.*sha512.*|.*md5.*|.*sha1.*|.*sha2*|.*txt|.*deb|.*rpm')
     urls = [ x for x in urls if not ext_r.match(x, re.IGNORECASE) ]
 
     if myOS == "linux" or myOS == "darwin":
+        #? what if a project releases both a tar.gz and a tar.xz?
+        #? what if a project releases a non-zipped tarball?
         ext_r = re.compile('.*tar.gz|.*tar.xz|.*tar.bz|.*tar.bz2')
     elif myOS == "windows":
         ext_r = re.compile('.*zip')
@@ -100,14 +111,16 @@ def filter_extensions(urls, myOS):
 
 
 def get_latest_version(data):
-    """Get the version of the latest release, based on list of URLs"""
+    """
+    Get the version of the latest release, based on list of URLs
+    """
 
     return data['tag_name']
 
 
 def get_binary(urls, bindir, linkdir):
     """
-    Download the latest version of the binary and handle it
+    Download the latest version of the binary and handle it, by dropping the actual binary into bindir, and a symlink to that binary into linkdir
     """
 
     if len(urls) == 1:
@@ -128,35 +141,35 @@ def get_binary(urls, bindir, linkdir):
     extracted = False
     if 'tar' in name:
         mytar = tarfile.open(targetfile)
-        mytar.extractall()                                                                 
-        os.remove(targetfile)                                                                  
+        mytar.extractall()
+        os.remove(targetfile)
         extracted = True
     elif 'zip' in name:
         with ZipFile(targetfile, 'r') as myzip:                                            
-            myzip.extractall()                                                             
-        os.remove(targetfile)                                                                  
+            myzip.extractall()
+        os.remove(targetfile)
         extracted = True
     else:
         print('name was {}, no tar or zip?'.format(name))
 
     if extracted:
         # Find largest file in extracted directory
-        largest = sorted((os.path.getsize(s), s)                                               
-            for s in glob.glob(tmpdir + '/**', recursive=True))[-1][1]                       
+        largest = sorted((os.path.getsize(s), s)
+            for s in glob.glob(tmpdir + '/**', recursive=True))[-1][1]
         print('Largest file: {}'.format(largest))
 
-        finalfile = os.path.basename(largest).replace('_', '-').split('-')[0]                  
+        finalfile = os.path.basename(largest).replace('_', '-').split('-')[0]
         finalpath = bindir + '/' + finalfile + '-' + latest_version
         shutil.move(largest, finalpath)
     else:
-        finalfile = os.path.basename(targetfile).replace('_', '-').split('-')[0]                  
+        finalfile = os.path.basename(targetfile).replace('_', '-').split('-')[0]
         finalpath = bindir + '/' + finalfile + '-' + latest_version
         shutil.move(targetfile, finalpath)
-     
+
     finallink = linkdir + '/' + finalfile
-    os.chmod(finalpath, 0o755)                                                             
+    os.chmod(finalpath, 0o755)
     print("Cleaning up temporary directory")
-    shutil.rmtree(tmpdir)                                                                  
+    shutil.rmtree(tmpdir)
 
     try:
         os.symlink(finalpath, finallink)
@@ -183,14 +196,6 @@ if __name__ == "__main__":
     parser.add_argument('--bindir', help='Directory to install binary into', required=True)
     parser.add_argument('--linkdir', help='Directory to install symlink into', required=True)
     args = vars(parser.parse_args())
-
-    # todo
-    # - linux-arm is not filtered out of list for generic linux
-    # - need to be able to override binary name, or add additional binary, like e.g. for minikube
-    # - need to be able to handle multiple binaries in a single release (kubectx)
-    # - if no binary release (only source), can we detect and throw error?
-    # - if no real release, but only pre-releases (like kn), can we do something?
-    # - needs to read config file
 
     myos = args['os']
     myarch = args['arch']
