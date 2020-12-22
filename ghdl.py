@@ -12,8 +12,10 @@ import tarfile
 import shutil
 import argparse
 import platform
+import configparser
 
 from zipfile import ZipFile
+from pathlib import Path
 
 
 def get_api_data(org, project):
@@ -195,15 +197,53 @@ def get_binary(urls, bindir, linkdir):
 if __name__ == "__main__":
 
     default_arch = platform.machine().lower()
-    default_os   = platform.system().lower()
+    default_os = platform.system().lower()
 
+    # Config file handling
+    home_dir = str(Path.home())
+    cp = configparser.ConfigParser()
+    config_file = '{}/.ghdl.ini'.format(home_dir)
+    cp.read(config_file)
+
+    # handling of ['auth'] section in ghdl.ini
+    token_required = username_required = True
+    token = username = ""
+    if "token" in cp["auth"]:
+        token = cp["auth"]["token"]
+        token_required = False
+
+    if "username" in cp["auth"]:
+        username = cp["auth"]["username"]
+        username_required = False
+
+    # handling of ['location'] section in ghdl.ini
+    linkdir_required = bindir_required = True
+    linkdir = bindir = None
+    if "linkdir" in cp["location"]:
+        print("yes")
+        linkdir = cp["location"]["linkdir"]
+        linkdir_required = False
+    if "bindir" in cp["location"]:
+        bindir = cp["location"]["bindir"]
+        bindir_required = False
+
+    print("debug: ")
+    print(linkdir)
+    print(bindir)
+
+    # Argument handling
     parser = argparse.ArgumentParser(
         description="Download latest released binary from a project on GitHub."
     )
-    parser.add_argument("--token", help="GitHub API token", required=True)
-    parser.add_argument("--username",
-                        help="GitHub username token",
-                        required=True)
+    parser.add_argument("--token",
+                        help="GitHub API token; default is {}".format(token),
+                        required=token_required,
+                        default=token)
+    parser.add_argument(
+        "--username",
+        help="GitHub username token; default is {}".format(username),
+        required=username_required,
+        default=username)
     parser.add_argument("--org",
                         help="GitHub organization project belongs to",
                         required=True)
@@ -212,24 +252,30 @@ if __name__ == "__main__":
                         required=True)
     parser.add_argument(
         "--os",
-        help="Operating system to download binary for (default is {})".format(
+        help="Operating system to download binary for; default is {}".format(
             default_os),
         choices=["darwin", "linux", "windows"],
         default=default_os,
     )
     parser.add_argument(
         "--arch",
-        help=
-        "Architecture to download binary for (default is {})".format(default_arch),
+        help="Architecture to download binary for; default is {}".format(
+            default_arch),
         choices=["aarch64", "armv7l", "i386", "x86_64"],
         default=default_arch,
     )
-    parser.add_argument("--bindir",
-                        help="Directory to install binary into",
-                        required=True)
-    parser.add_argument("--linkdir",
-                        help="Directory to install symlink into",
-                        required=True)
+    parser.add_argument(
+        "--bindir",
+        help="Directory to install binary into; default is {}".format(
+            bindir if bindir != None else None),
+        required=False if bindir != None else True,
+        default=bindir if bindir != None else None)
+    parser.add_argument(
+        "--linkdir",
+        help="Directory to install symlink into; default is {}".format(
+            linkdir if linkdir != None else None),
+        required=False if linkdir != None else True,
+        default=linkdir if linkdir != None else None)
     args = vars(parser.parse_args())
 
     # The else case below should never happen, because
