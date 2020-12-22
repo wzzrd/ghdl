@@ -190,8 +190,6 @@ def get_binary(urls, bindir, linkdir):
         os.remove(finallink)
         os.symlink(finalpath, finallink)
         print("Symlinked {} to {}".format(finalpath, finallink))
-        os.symlink(finalpath, finallink)
-        print("Symlinked {} to {}".format(finalpath, finallink))
 
 
 if __name__ == "__main__":
