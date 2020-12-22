@@ -230,6 +230,7 @@ if __name__ == "__main__":
     print(bindir)
 
     # Argument handling
+    # * need to rearrange these in a more logical order
     parser = argparse.ArgumentParser(
         description="Download latest released binary from a project on GitHub."
     )
