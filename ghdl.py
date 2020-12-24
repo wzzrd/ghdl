@@ -206,6 +206,8 @@ if __name__ == "__main__":
     # handling of ['auth'] section in ghdl.ini
     token_required = username_required = True
     token = username = ""
+    # ! we need to check for cp["auth"] before we do this, otherwise configparser errors
+    # out on us
     if "token" in cp["auth"]:
         token = cp["auth"]["token"]
         token_required = False
