@@ -57,20 +57,30 @@ def get_latest_list(data):
     return links
 
 
-def filter_urls(urls, myArch, myOS):
+def filter_urls(urls, myArch, myOS, myBinary=None):
     """
     Filters list of URLs to only include those for the requested OS and architecture
+    Optionally, the myBinary parameter can override the binary name we are filtering for
     """
-    new_urls = []
 
-    for url in urls:
-        if myOS in url.lower():
-            new_urls.append(url)
+    original_urls = urls.copy()
+    if myBinary != None:
+        bin_r = re.compile(".*{}.*".format(binary))
+        urls = [x for x in urls if bin_r.match(x, re.IGNORECASE)]
+        if len(urls) == original_urls or len(urls) == 0:
+            urls = original_urls
+    
+    original_urls = urls.copy()
+    os_r = re.compile(".*{}.*".format(myOS))
+    urls = [x for x in urls if os_r.match(x, re.IGNORECASE)]
+    if len(urls) == original_urls or len(urls) == 0:
+        urls = original_urls
 
     # ? are these regexps exhaustive enough?
     # ? I'm not even sure arm(v)8 is actually used in releases :)
     # * Checked on couple of rpis; it's aarch64, armv7l and armv6l
     # * I don't think I want to support armv6l, but armv7l seems reasonable to support
+    original_urls = urls.copy()
     if myArch == "x86_64":
         arch_r = re.compile(".*64bit.*|.*x86_64.*|.*amd64.*")
     elif myArch == "aarch64":
@@ -81,15 +91,29 @@ def filter_urls(urls, myArch, myOS):
     elif myArch == "i386":
         arch_r = re.compile(".*386.*")
 
-    urls = [x for x in new_urls if arch_r.match(x, re.IGNORECASE)]
+    urls = [x for x in urls if arch_r.match(x, re.IGNORECASE)]
 
-    # If the list of URLs is empty after filtering for the architecture, but
-    # was not empty after filtering for the OS, opportunistically return the
-    # list of URLs filtered for the OS only.
-    if len(urls) == 0 and len(new_urls) > 0:
-        return new_urls
-    else:
+    if len(urls) == original_urls or len(urls) == 0:
+        urls = original_urls
+
+    return urls
+
+
+def filter_binary(urls, binary):
+    """
+    Filters list of URLs to only those files with the right name
+    If list ends up empty, returns the original list.
+    # * should actually raise error / throw exception, I suppose
+    """
+
+    bin_r = re.compile(".*{}.*".format(binary))
+
+    new_urls = [x for x in urls if bin_r.match(x, re.IGNORECASE)]
+
+    if len(new_urls) == 0 and len(urls) > 0:
         return urls
+    else:
+        return new_urls
 
 
 def filter_extensions(urls, myOS):
@@ -172,8 +196,11 @@ def get_binary(urls, bindir, linkdir):
         finalpath = bindir + "/" + finalfile + "-" + latest_version
         shutil.move(largest, finalpath)
     else:
-        finalfile = os.path.basename(targetfile).replace("_",
-                                                         "-").split("-")[0]
+        if binary != None:
+            print("Binary is not none")
+            finalfile = binary.replace("_", "-")
+        else:
+            finalfile = os.path.basename(targetfile).replace("_", "-")
         finalpath = bindir + "/" + finalfile + "-" + latest_version
         shutil.move(targetfile, finalpath)
 
@@ -249,6 +276,10 @@ if __name__ == "__main__":
     parser.add_argument("--project",
                         help="GitHub project to download latest binary from",
                         required=True)
+    parser.add_argument("--binary",
+                        help="Override the binary name to download (optional)",
+                        default=None,
+                        required=False)
     parser.add_argument(
         "--os",
         help="Operating system to download binary for; default is {}".format(
@@ -288,6 +319,7 @@ if __name__ == "__main__":
     linkdir = args["linkdir"]
     token = args["token"]
     username = args["username"]
+    binary = args["binary"]
 
     data = get_api_data(args["org"], args["project"])
     urls = get_latest_list(data)
@@ -298,7 +330,7 @@ if __name__ == "__main__":
         print(" - ", url)
 
     print("Filtered for {}, {}: ".format(myos, myarch))
-    urls = filter_urls(urls, myarch, myos)
+    urls = filter_urls(urls, myarch, myos, myBinary=binary)
     for url in urls:
         print(" - ", url)
 
