@@ -66,15 +66,15 @@ def filter_urls(urls, myArch, myOS, myBinary=None):
 
     original_urls = urls.copy()
     if myBinary != None:
-        bin_r = re.compile(".*{}.*".format(binary))
-        urls = [x for x in urls if bin_r.match(x, re.IGNORECASE)]
-        if len(urls) == original_urls or len(urls) == 0:
+        bin_r = re.compile(".*{}.*".format(binary), re.IGNORECASE)
+        urls = [x for x in urls if bin_r.match(x)]
+        if len(urls) == len(original_urls) or len(urls) == 0:
             urls = original_urls
-    
+
     original_urls = urls.copy()
-    os_r = re.compile(".*{}.*".format(myOS))
-    urls = [x for x in urls if os_r.match(x, re.IGNORECASE)]
-    if len(urls) == original_urls or len(urls) == 0:
+    os_r = re.compile(".*{}.*".format(myOS), re.IGNORECASE)
+    urls = [x for x in urls if os_r.match(x)]
+    if len(urls) == len(original_urls) or len(urls) == 0:
         urls = original_urls
 
     # ? are these regexps exhaustive enough?
@@ -83,16 +83,16 @@ def filter_urls(urls, myArch, myOS, myBinary=None):
     # * I don't think I want to support armv6l, but armv7l seems reasonable to support
     original_urls = urls.copy()
     if myArch == "x86_64":
-        arch_r = re.compile(".*64bit.*|.*x86_64.*|.*amd64.*")
+        arch_r = re.compile(".*64bit.*|.*x86_64.*|.*amd64.*", re.IGNORECASE)
     elif myArch == "aarch64":
-        arch_r = re.compile(".*aarch64.*|.*arm64.*|.*arm8.*|.*armv8.*")
+        arch_r = re.compile(".*aarch64.*|.*arm64.*|.*arm8.*|.*armv8.*", re.IGNORECASE)
     elif myArch == "armv7l":
         # Assumption is that plain 'arm' refers to armv7l
-        arch_r = re.compile(".*armv7.*|.*arm7.*|.*arm")
+        arch_r = re.compile(".*armv7.*|.*arm7.*|.*arm", re.IGNORECASE)
     elif myArch == "i386":
-        arch_r = re.compile(".*386.*")
+        arch_r = re.compile(".*386.*", re.IGNORECASE)
 
-    urls = [x for x in urls if arch_r.match(x, re.IGNORECASE)]
+    urls = [x for x in urls if arch_r.match(x)]
 
     if len(urls) == original_urls or len(urls) == 0:
         urls = original_urls
@@ -152,6 +152,30 @@ def get_latest_version(data):
     return data["tag_name"]
 
 
+def get_basic_filename(name, latest_version):
+    """
+    Get the plain name of the binary, with operating system name, architecture and version stipped off
+    """
+
+    pattern = re.compile(
+        "[-_]amd64|[-_]x86_64|[-_]64bit|[-_]aarch64|[-_]arm64|[-_]arm8|[-_]armv8|[-_]armv7l|[-_]386|[-_]i386",
+        re.IGNORECASE)
+    name = re.sub(pattern, "", name)
+
+    pattern = re.compile("[-_]windows|[-_]linux|[-_]darwin", re.IGNORECASE)
+    name = re.sub(pattern, "", name)
+
+    print(latest_version)
+    pattern = re.compile(
+        "[-_]{}|[-_]{}".format(latest_version,
+                               latest_version.removeprefix('v')),
+        re.IGNORECASE)
+    name = re.sub(pattern, "", name)
+    print(name)
+
+    return name
+
+
 def get_binary(urls, bindir, linkdir, latest_version):
     """
     Download the latest version of the binary and handle it, by dropping the actual binary into bindir, and a symlink to that binary into linkdir
@@ -202,7 +226,9 @@ def get_binary(urls, bindir, linkdir, latest_version):
             finalfile = binary.replace("_", "-")
         else:
             finalfile = os.path.basename(targetfile).replace("_", "-")
+
         finalpath = bindir + "/" + finalfile + "-" + latest_version
+        finalfile = get_basic_filename(finalfile, latest_version)
         shutil.move(targetfile, finalpath)
 
     finallink = linkdir + "/" + finalfile
@@ -219,7 +245,7 @@ def get_binary(urls, bindir, linkdir, latest_version):
         os.symlink(finalpath, finallink)
         print("Symlinked {} to {}".format(finalpath, finallink))
 
-def handle_item(org, project, binary=None):
+def handle_item(org, project, myarch, myos, binary=None):
     data = get_api_data(org, project)
     urls = get_latest_list(data)
     latest_version = get_latest_version(data)
@@ -359,15 +385,15 @@ if __name__ == "__main__":
     project = args["project"]
 
     if org and project:
-        handle_item(org, project, binary)
+        handle_item(org, project, myarch, myos, binary)
     elif batch_file:
         with open(batch_file) as f:
             entries = yaml.load(f, Loader=yaml.FullLoader)
         for item in entries:
             if "binary" in item:
-                handle_item(item["org"], item["project"], override=item["binary"])
+                handle_item(item["org"], item["project"], myarch, myos, binary=item["binary"])
             else:
-                handle_item(item["org"], item["project"])
+                handle_item(item["org"], item["project"], myarch, myos)
     else:
         print("Apparently, neither --batch_file nor --org and --project were specified.")
         sys.exit(1)
