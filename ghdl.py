@@ -247,16 +247,11 @@ if __name__ == "__main__":
     linkdir_required = bindir_required = True
     linkdir = bindir = None
     if "linkdir" in cp["location"]:
-        print("yes")
         linkdir = cp["location"]["linkdir"]
         linkdir_required = False
     if "bindir" in cp["location"]:
         bindir = cp["location"]["bindir"]
         bindir_required = False
-
-    print("debug: ")
-    print(linkdir)
-    print(bindir)
 
     # Argument handling
     # * need to rearrange these in a more logical order
