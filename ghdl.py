@@ -152,7 +152,7 @@ def get_latest_version(data):
     return data["tag_name"]
 
 
-def get_binary(urls, bindir, linkdir):
+def get_binary(urls, bindir, linkdir, latest_version):
     """
     Download the latest version of the binary and handle it, by dropping the actual binary into bindir, and a symlink to that binary into linkdir
     """
@@ -219,7 +219,7 @@ def get_binary(urls, bindir, linkdir):
         os.symlink(finalpath, finallink)
         print("Symlinked {} to {}".format(finalpath, finallink))
 
-def handle_item(org, project, override=None):
+def handle_item(org, project, binary=None):
     data = get_api_data(org, project)
     urls = get_latest_list(data)
     latest_version = get_latest_version(data)
@@ -239,7 +239,7 @@ def handle_item(org, project, override=None):
         print(" - ", url)
 
     print("Downloading and installing file: ")
-    get_binary(urls, bindir, linkdir)
+    get_binary(urls, bindir, linkdir, latest_version)
 
 
 if __name__ == "__main__":
@@ -277,6 +277,8 @@ if __name__ == "__main__":
         bindir_required = False
     if "batch_file" in cp["location"]:
         batch_file = cp["location"]["batch_file"]
+    else:
+        batch_file = False
 
     # Argument handling
     # * need to rearrange these in a more logical order
@@ -297,10 +299,10 @@ if __name__ == "__main__":
         default=username)
     group_specific.add_argument("--org",
                         help="GitHub organization project belongs to",
-                        required=True)
+                        required='--batch_file' not in sys.argv and not batch_file)
     group_specific.add_argument("--project",
                         help="GitHub project to download latest binary from",
-                        required=True)
+                        required='--batch_file' not in sys.argv and not batch_file)
     parser.add_argument("--binary",
                         help="Override the binary name to download (optional)",
                         default=None,
@@ -356,11 +358,16 @@ if __name__ == "__main__":
     org = args["org"]
     project = args["project"]
 
-    if batch_file:
+    if org and project:
+        handle_item(org, project, binary)
+    elif batch_file:
         with open(batch_file) as f:
             entries = yaml.load(f, Loader=yaml.FullLoader)
         for item in entries:
-            if "override" in item:
-                handle_item(item["org"], item["project"], override=item["override"])
+            if "binary" in item:
+                handle_item(item["org"], item["project"], override=item["binary"])
             else:
                 handle_item(item["org"], item["project"])
+    else:
+        print("Apparently, neither --batch_file nor --org and --project were specified.")
+        sys.exit(1)
