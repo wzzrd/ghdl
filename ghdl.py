@@ -13,6 +13,7 @@ import shutil
 import argparse
 import platform
 import configparser
+import yaml
 
 from zipfile import ZipFile
 from pathlib import Path
@@ -218,6 +219,28 @@ def get_binary(urls, bindir, linkdir):
         os.symlink(finalpath, finallink)
         print("Symlinked {} to {}".format(finalpath, finallink))
 
+def handle_item(org, project, override=None):
+    data = get_api_data(org, project)
+    urls = get_latest_list(data)
+    latest_version = get_latest_version(data)
+    print("Latest version found: ", latest_version)
+    print("Release URLs found: ")
+    for url in urls:
+        print(" - ", url)
+
+    print("Filtered for {}, {}: ".format(myos, myarch))
+    urls = filter_urls(urls, myarch, myos, myBinary=binary)
+    for url in urls:
+        print(" - ", url)
+
+    print("Filtered for tarballs / zipfiles: ")
+    urls = filter_extensions(urls, myos)
+    for url in urls:
+        print(" - ", url)
+
+    print("Downloading and installing file: ")
+    get_binary(urls, bindir, linkdir)
+
 
 if __name__ == "__main__":
 
@@ -252,12 +275,17 @@ if __name__ == "__main__":
     if "bindir" in cp["location"]:
         bindir = cp["location"]["bindir"]
         bindir_required = False
+    if "batch_file" in cp["location"]:
+        batch_file = cp["location"]["batch_file"]
 
     # Argument handling
     # * need to rearrange these in a more logical order
     parser = argparse.ArgumentParser(
         description="Download latest released binary from a project on GitHub."
     )
+    group_specific = parser.add_argument_group("Specific organization and project name; if specified overrides --batch_file")
+    group_batch = parser.add_argument_group("Batch processing of list of organizations and projects; if not specified, the --project and --org arguments are required")
+
     parser.add_argument("--token",
                         help="GitHub API token; default is {}".format(token),
                         required=token_required,
@@ -267,10 +295,10 @@ if __name__ == "__main__":
         help="GitHub username token; default is {}".format(username),
         required=username_required,
         default=username)
-    parser.add_argument("--org",
+    group_specific.add_argument("--org",
                         help="GitHub organization project belongs to",
                         required=True)
-    parser.add_argument("--project",
+    group_specific.add_argument("--project",
                         help="GitHub project to download latest binary from",
                         required=True)
     parser.add_argument("--binary",
@@ -303,6 +331,13 @@ if __name__ == "__main__":
             linkdir if linkdir != None else None),
         required=False if linkdir != None else True,
         default=linkdir if linkdir != None else None)
+    group_batch.add_argument(
+        "--batch_file",
+        help="File holding the list of to be downloaded files in yaml format; default is {}".format(
+            batch_file if batch_file != None else None),
+        required=False,
+        default=batch_file if batch_file != None else None)
+
     args = vars(parser.parse_args())
 
     # The else case below should never happen, because
@@ -317,24 +352,15 @@ if __name__ == "__main__":
     token = args["token"]
     username = args["username"]
     binary = args["binary"]
+    batch_file = args["batch_file"]
+    org = args["org"]
+    project = args["project"]
 
-    data = get_api_data(args["org"], args["project"])
-    urls = get_latest_list(data)
-    latest_version = get_latest_version(data)
-    print("Latest version found: ", latest_version)
-    print("Release URLs found: ")
-    for url in urls:
-        print(" - ", url)
-
-    print("Filtered for {}, {}: ".format(myos, myarch))
-    urls = filter_urls(urls, myarch, myos, myBinary=binary)
-    for url in urls:
-        print(" - ", url)
-
-    print("Filtered for tarballs / zipfiles: ")
-    urls = filter_extensions(urls, myos)
-    for url in urls:
-        print(" - ", url)
-
-    print("Downloading and installing file: ")
-    get_binary(urls, bindir, linkdir)
+    if batch_file:
+        with open(batch_file) as f:
+            entries = yaml.load(f, Loader=yaml.FullLoader)
+        for item in entries:
+            if "override" in item:
+                handle_item(item["org"], item["project"], override=item["override"])
+            else:
+                handle_item(item["org"], item["project"])

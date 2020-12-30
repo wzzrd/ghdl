@@ -1,0 +1,6 @@
+---
+- org: kubernetes
+  project: minikube
+  override: docker-machine-driver-kvm2
+- org: kubernetes
+  project: minikube
