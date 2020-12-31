@@ -300,93 +300,93 @@ if __name__ == "__main__":
     if "bindir" in cp["location"]:
         bindir = cp["location"]["bindir"]
         bindir_required = False
-    if "batch_file" in cp["location"]:
-        batch_file = cp["location"]["batch_file"]
+    if "batch" in cp["location"]:
+        batch= cp["location"]["batch"]
     else:
-        batch_file = False
+        batch = False
 
     # Argument handling
     # * need to rearrange these in a more logical order
     parser = argparse.ArgumentParser(
-        description="Download latest released binary from a project on GitHub."
+        description="""Download latest released binary from a project on GitHub.
+        Defaults mentioned below are either auto-detected, like arch and os, 
+        or read from ~/.ghdl.ini."""
     )
-    group_specific = parser.add_argument_group("Specific organization and project name; if specified overrides --batch_file")
-    group_batch = parser.add_argument_group("Batch processing of list of organizations and projects; if not specified, the --project and --org arguments are required")
+    group_auth = parser.add_argument_group("Authenticate to GitHub (mandatory)")
+    group_batch = parser.add_argument_group("List of organizations and projects for batch processing; if not specified, the --project and --org arguments are required")
+    group_autodetect = parser.add_argument_group("Override autodetected arch and os")
+    group_specific = parser.add_argument_group("Specific organization and project name; if specified overrides --batch")
+    group_locations = parser.add_argument_group("Target directories for binaries and symlinks")
 
-    parser.add_argument("--token",
+    group_auth.add_argument("--token",
                         help="GitHub API token; default is {}".format(token),
                         required=token_required,
                         default=token)
-    parser.add_argument(
+    group_auth.add_argument(
         "--username",
         help="GitHub username token; default is {}".format(username),
         required=username_required,
         default=username)
     group_specific.add_argument("--org",
                         help="GitHub organization project belongs to",
-                        required='--batch_file' not in sys.argv and not batch_file)
+                        required='--batch' not in sys.argv and not batch)
     group_specific.add_argument("--project",
                         help="GitHub project to download latest binary from",
-                        required='--batch_file' not in sys.argv and not batch_file)
-    parser.add_argument("--binary",
+                        required='--batch' not in sys.argv and not batch)
+    group_specific.add_argument("--binary",
                         help="Override the binary name to download (optional)",
                         default=None,
                         required=False)
-    parser.add_argument(
+    group_autodetect.add_argument(
         "--os",
         help="Operating system to download binary for; default is {}".format(
             default_os),
         choices=["darwin", "linux", "windows"],
         default=default_os,
     )
-    parser.add_argument(
+    group_autodetect.add_argument(
         "--arch",
         help="Architecture to download binary for; default is {}".format(
             default_arch),
         choices=["aarch64", "armv7l", "i386", "x86_64"],
         default=default_arch,
     )
-    parser.add_argument(
+    group_locations.add_argument(
         "--bindir",
         help="Directory to install binary into; default is {}".format(
             bindir if bindir != None else None),
         required=False if bindir != None else True,
         default=bindir if bindir != None else None)
-    parser.add_argument(
+    group_locations.add_argument(
         "--linkdir",
         help="Directory to install symlink into; default is {}".format(
             linkdir if linkdir != None else None),
         required=False if linkdir != None else True,
         default=linkdir if linkdir != None else None)
     group_batch.add_argument(
-        "--batch_file",
-        help="File holding the list of to be downloaded files in yaml format; default is {}".format(
-            batch_file if batch_file != None else None),
+        "--batch",
+        help="Yaml file with list of orgs / projects; default is {}".format(
+            batch if batch != None else None),
         required=False,
-        default=batch_file if batch_file != None else None)
+        default=batch if batch != None else None)
 
     args = vars(parser.parse_args())
 
-    # The else case below should never happen, because
-    # platform.system().lower() should always return either linux, windows or
-    # darwin...
     myos = args["os"]
-    # The else case below should never happen, because
-    # platform.machine().lower() should always return something like x86_64 or aarch64
     myarch = args["arch"]
     bindir = args["bindir"]
     linkdir = args["linkdir"]
     token = args["token"]
     username = args["username"]
     binary = args["binary"]
-    batch_file = args["batch_file"]
+    batch= args["batch"]
     org = args["org"]
     project = args["project"]
 
     if org and project:
         handle_item(org, project, myarch, myos, binary)
-    elif batch_file:
-        with open(batch_file) as f:
+    elif batch:
+        with open(batch) as f:
             entries = yaml.load(f, Loader=yaml.FullLoader)
         for item in entries:
             if "binary" in item:
@@ -394,5 +394,5 @@ if __name__ == "__main__":
             else:
                 handle_item(item["org"], item["project"], myarch, myos)
     else:
-        print("Apparently, neither --batch_file nor --org and --project were specified.")
+        print("Apparently, neither --batch nor --org and --project were specified.")
         sys.exit(1)
