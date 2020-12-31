@@ -28,8 +28,8 @@ optional arguments:
   -h, --help            show this help message and exit
 
 Authenticate to GitHub (mandatory):
-  --token TOKEN         GitHub API token; default is f659e51acee2558853dda7806524a327cf69bca1 # This is obviously not a working token ;)
-  --username USERNAME   GitHub username token; default is wzzrd
+  --token TOKEN         GitHub API token; default is my_token
+  --username USERNAME   GitHub username token; default is github_user
 
 List of organizations and projects for batch processing; if not specified, the --project and --org arguments are required:
   --batch BATCH         Yaml file with list of orgs / projects; default is False
@@ -46,8 +46,8 @@ Specific organization and project name; if specified overrides --batch:
   --binary BINARY       Override the binary name to download (optional)
 
 Target directories for binaries and symlinks:
-  --bindir BINDIR       Directory to install binary into; default is /home/mburgerh/Sync_Workstations/files
-  --linkdir LINKDIR     Directory to install symlink into; default is /home/mburgerh/Sync_Workstations/links
+  --bindir BINDIR       Directory to install binary into; default is /home/user/.local/files
+  --linkdir LINKDIR     Directory to install symlink into; default is /home/user/.local/bin
 ```
 
 ### Authentication
