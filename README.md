@@ -52,23 +52,25 @@ Target directories for binaries and symlinks:
 
 ### Authentication
 The token and username arguments are required in order to provide GitHub with
-API authentication. This should really be required, because the rate limit on
-the GitHub API is 60 requests per hour, which should be enough to download a
-good amount of binaries through this script (it only hits the API once per
-binary).
+API authentication. This should really not be required, because the rate
+limit on the GitHub API is 60 requests per hour, which should be enough to
+download a good amount of binaries through this script (it only hits the API
+once per binary).
 
-This requirement will be dropped in a future version in order to do single
-downloads without authentication.
+This requirement will be dropped in a future version.
 
 
 ### Specify organization, project and optionally the binary
 Currently, the script will download the latest binary of the project specified by
-a combination of the `--org`(anization), `--project` and optioanlly
+a combination of the `--org`(anization), `--project` and (optionally)
 `--binary` arguments.
 
 The script can also read a YAML file containing a list of organization,
 project and binary combinations. For an example, see the included
 example.yaml file.
+
+The YAML file can be specified on the commandline, with `--batch`, or in the
+configuration file as the `batch` option in the `location` section.
 
 
 ### Override operating system and architecture
@@ -78,19 +80,24 @@ whether to opt for tarballs or zipfiles. The default operating system is
 auto-detected.
 
 The script accepts four architecture at the moment: aarch64, armv7, i386 and
-x86\_64. The default architecture is auto-detected.
+x86\_64. Like the default operating system, the default architecture is
+auto-detected.
 
 
 ### Target directories: bindir and linkdir
 The script allows you to drop the downloaded binaries in a directory out of
-sight somewhere. The example below uses `~/.local/gh`, for example. This is
-specified by the `bindir` argument. The binary is dropped into that
-directory, withe the version number of the binary appended to it. The script
-then creates a symlink into `linkdir`. The example below uses `~/.local/bin`
-for that. Usually, that directory is part of your `$PATH` or
-`$fish\_user\_paths`.
+sight somewhere. The example below uses `~/.local/gh`. This is specified by
+the `bindir` argument. 
+
+The binary is dropped into that directory, with the version number of the
+binary appended to it. The script then creates a symlink into `linkdir`. The
+example below uses `~/.local/bin` for that. Usually, that directory is part
+of your `$PATH` or `$fish\_user\_paths`.
 
 You can set both to the same directory as well, if you like.
+
+Both `linkdir` and `bindir` can be set through the configuration file, in the
+`location` section.
 
 # Configuration file
 A configuration file can be created at `~/.ghdl.ini` to simplify running
@@ -106,7 +113,31 @@ linkdir = /home/you/.local/links # add this to your path
 batch = /home/you/.ghdl.yaml
 ```
 
-## Example
+# Batch file
+Either on the command line, with the `--batch` option, or in the
+configuration file, you can specify a YAML formatted file containing multiple
+binaries to download. I have about 40 in mine, which makes it quite easy for
+me to keep up to date with the latest version of e.g. starship, or minikube.
+
+The batch file should have the following format:
+```
+- org: kubernetes
+  project: minikube
+- org: digitalocean
+  project: doctl
+- org: kubernetes
+  project: minikube
+  binary: docker-machine-driver-kvm2
+```
+
+The example above tells the script to download three binaries. The first two
+are pretty much self-explanatory. The third overrides the binary name for the
+minikube project to docker-machine-driver-kvm2. The minikube project provides
+multiple binaries in their release, and we need both the minikube binary as
+well as the docker-machine-driver-kvm2 binary.
+
+
+# Example
 ```
 ./ghdl.py --token $github_token --username $username --bindir /home/you/.local/gh \
   --linkdir /home/you/.local/bin --org peco --project peco
@@ -137,7 +168,9 @@ gzipped tarball for x86\_64 Linux and dropped the file into `~/.local/gh` as
 `peco-v0.5.8`. A symlink was created from there to `~/.local/bin/peco`.
 
 
-## To do and known issues
+# Known issues and roadmap
+
+## Known issues
 - for some projects, the selection system currently ends up with multiple binaries. For
   example, the kubebox project has both a binary that ends in 'linux', and one that ends
   in 'linux-arm'. The scripts selects the first hit right now ('linux'), but that's
@@ -152,10 +185,15 @@ gzipped tarball for x86\_64 Linux and dropped the file into `~/.local/gh` as
 - When a project releases a new binary, the script will download the new binary and
   update the symlink. The old version is currently not removed.
 
-- the script is by no means perfect and will sometimes fail to download a
-  binary or destroy civilization. Use at your own risk!
+- the GitHub release system is a complete and utter mess. GitHub does not
+  seem to provide guidance to projects on how to release, and each project does
+  their own thing. Therefore, what works today with this script can be broken
+  tomorrow, or or even this afternoon.
+
+- **the script is by no means perfect and will sometimes fail to download a
+  binary or destroy civilization. Use at your own risk!**
 
 ## Short term roadmap
-- clean up and refactor variables names, etc.
-- debug statements at useful places
+- clean up and refactor; script right now is a bit messy
+- provide debug statements at useful places
 - automatically remove old versions of a binary, if requested by the user
