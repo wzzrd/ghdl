@@ -149,8 +149,12 @@ def get_latest_version(data):
     """
     Get the version of the latest release, based on list of URLs
     """
+    if "/" in data["tag_name"]:
+        version = data["tag_name"].split("/")[1]
+    else:
+        version = data["tag_name"]
 
-    return data["tag_name"]
+    return version
 
 
 def get_basic_filename(name, latest_version):
