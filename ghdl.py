@@ -66,9 +66,10 @@ def filter_urls(urls, myArch, myOS, myBinary=None):
 
     original_urls = urls.copy()
     if myBinary != None:
-        bin_r = re.compile(".*{}.*".format(binary), re.IGNORECASE)
+        bin_r = re.compile(".*{}.*".format(myBinary), re.IGNORECASE)
         urls = [x for x in urls if bin_r.match(x)]
         if len(urls) == len(original_urls) or len(urls) == 0:
+            print(len(urls))
             urls = original_urls
 
     original_urls = urls.copy()
@@ -107,9 +108,9 @@ def filter_binary(urls, binary):
     # * should actually raise error / throw exception, I suppose
     """
 
-    bin_r = re.compile(".*{}.*".format(binary))
+    bin_r = re.compile(".*{}.*".format(binary), re.IGNORECASE)
 
-    new_urls = [x for x in urls if bin_r.match(x, re.IGNORECASE)]
+    new_urls = [x for x in urls if bin_r.match(x)]
 
     if len(new_urls) == 0 and len(urls) > 0:
         return urls
@@ -126,17 +127,17 @@ def filter_extensions(urls, myOS):
 
     # Filter useless extensions, like for checksums, text files, debs, rpms...
     ext_r = re.compile(
-        ".*asc|.*sha512.*|.*md5.*|.*sha1.*|.*sha2*|.*txt|.*deb|.*rpm")
-    urls = [x for x in urls if not ext_r.match(x, re.IGNORECASE)]
+        ".*asc|.*sha512.*|.*md5.*|.*sha1.*|.*sha2*|.*txt|.*deb|.*rpm", re.IGNORECASE)
+    urls = [x for x in urls if not ext_r.match(x)]
 
     if myOS == "linux" or myOS == "darwin":
         # ? what if a project releases both a tar.gz and a tar.xz?
         # ? what if a project releases a non-zipped tarball?
-        ext_r = re.compile(".*tar.gz|.*tar.xz|.*tar.bz|.*tar.bz2")
+        ext_r = re.compile(".*tar.gz|.*tar.xz|.*tar.bz|.*tar.bz2", re.IGNORECASE)
     elif myOS == "windows":
         ext_r = re.compile(".*zip")
 
-    new_urls = [x for x in urls if ext_r.match(x, re.IGNORECASE)]
+    new_urls = [x for x in urls if ext_r.match(x)]
 
     if len(new_urls) == 0 and len(urls) > 0:
         return urls
@@ -165,13 +166,11 @@ def get_basic_filename(name, latest_version):
     pattern = re.compile("[-_]windows|[-_]linux|[-_]darwin", re.IGNORECASE)
     name = re.sub(pattern, "", name)
 
-    print(latest_version)
     pattern = re.compile(
         "[-_]{}|[-_]{}".format(latest_version,
                                latest_version.removeprefix('v')),
         re.IGNORECASE)
     name = re.sub(pattern, "", name)
-    print(name)
 
     return name
 
