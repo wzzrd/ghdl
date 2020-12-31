@@ -28,7 +28,7 @@ optional arguments:
   -h, --help            show this help message and exit
 
 Authenticate to GitHub (mandatory):
-  --token TOKEN         GitHub API token; default is f659e51acee2558853dda7806524a327cf69bca1
+  --token TOKEN         GitHub API token; default is f659e51acee2558853dda7806524a327cf69bca1 # This is obviously not a working token ;)
   --username USERNAME   GitHub username token; default is wzzrd
 
 List of organizations and projects for batch processing; if not specified, the --project and --org arguments are required:

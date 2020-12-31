@@ -36,7 +36,7 @@ def get_api_data(org, project):
         req.add_header("Authorization",
                        "Basic %s" % encoded_credentials.decode("ascii"))
         response = urllib.request.urlopen(req)
-    except:
+    except e:
         print("Cannot open {}".format(url))
         sys.exit(1)
 
